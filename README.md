@@ -7,7 +7,13 @@
 
 A modern, scalable test automation framework demonstrating professional QA engineering practices. This framework showcases expertise in API testing, UI automation, and comprehensive test reporting with CI/CD integration.
 
-> **Note:** This repository is for educational and portfolio purposes. All endpoints, credentials, and data are placeholders.
+> **⚠️ Disclaimer:** This repository is for educational and portfolio demonstration purposes only.
+> 
+> **Test Applications Used:**
+> - **UI Testing**: [SauceDemo](https://www.saucedemo.com/) - An open-source demo application created by Sauce Labs specifically for testing practice
+> - **API Testing**: [JSONPlaceholder](https://jsonplaceholder.typicode.com/) - A free fake REST API for testing and prototyping
+> 
+> Both applications are publicly available and explicitly designed for testing practice and educational purposes.
 
 ---
 
