@@ -1,11 +1,10 @@
-
 name: CI
 
 on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # Changed from ubuntu-latest to avoid Ubuntu 24.04
     steps:
       - uses: actions/checkout@v4
       
