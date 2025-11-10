@@ -1,3 +1,6 @@
+permissions:
+  contents: write
+
 name: CI
 
 on: [push, pull_request]
@@ -62,7 +65,7 @@ jobs:
           git config user.name "$GIT_AUTHOR_NAME"
           git config user.email "$GIT_AUTHOR_EMAIL"
 
-          # Copy artifact to a safe temp directory before switching branches
+          # Copy artifact to tmp dir before switching branches
           TMP_DIR=/tmp/artifacts
           mkdir -p "$TMP_DIR"
           if [ -f "${GITHUB_WORKSPACE}/${ARTIFACT_PATH}" ]; then
@@ -82,7 +85,6 @@ jobs:
           else
             echo "Reports branch does not exist — creating orphan branch ${REPORT_BRANCH}"
             git checkout --orphan ${REPORT_BRANCH}
-            # Clear workspace to ensure no overlap
             git rm -rf . >/dev/null 2>&1 || true
           fi
 
