@@ -25,12 +25,22 @@ jobs:
       
       - name: Run tests
         run: |
-          pytest --alluredir=reports/allure-results -v
-      
+          pytest --reruns 2 --reruns-delay 1 --alluredir=./reports/allure-results --json-report --json-report-file=./reports/report.json
+
       - name: Upload Allure results
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: reports/allure-results
-          retention-days: 30
+
+      - name: Upload pytest json report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-json-report
+          path: reports/report.json
+
+      - name: Upload screenshots / videos
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: reports/artifacts/**

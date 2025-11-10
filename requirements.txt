@@ -1,5 +1,11 @@
 # Core Testing Framework
 pytest==8.0.0
+pytest-json-report
+pytest-cov
+pytest-xdist
+pytest-rerunfailures
+pytest-instafail       # optional, nicer failure output
+python-dotenv          # for safe env config
 
 # UI Testing
 playwright==1.41.0
@@ -13,3 +19,6 @@ allure-pytest==2.13.2
 
 # Development & Utilities
 streamlit==1.31.0
+pandas
+matplotlib
+sqlite3-binary
