@@ -1,3 +1,7 @@
+# .github/workflows/ci.yml
+# CI workflow that runs tests, uploads artefacts, and publishes a test report to a dedicated `reports` branch.
+# NOTE: create a repo secret named GH_PUSH_TOKEN with a PAT that has repo content write permission.
+
 permissions:
   contents: write
 
@@ -9,7 +13,8 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -51,7 +56,7 @@ jobs:
           name: test-artifacts
           path: reports/artifacts/**
 
-      - name: Publish report to reports branch (archive)
+      - name: Publish report to reports branch (archive) using PAT
         if: ${{ always() }}
         env:
           REPORT_BRANCH: reports
@@ -75,12 +80,14 @@ jobs:
             exit 0
           fi
 
-          # Fetch all branches (requires fetch-depth: 0 at checkout)
+          # Fetch remote branches
           git fetch origin || true
 
           if git show-ref --verify --quiet "refs/remotes/origin/${REPORT_BRANCH}"; then
             echo "Reports branch exists — checking it out"
+            # Create or reset local branch to match remote
             git checkout --progress --track -B ${REPORT_BRANCH} origin/${REPORT_BRANCH}
+            # Clean workspace to start fresh
             git rm -rf . >/dev/null 2>&1 || true
           else
             echo "Reports branch does not exist — creating orphan branch ${REPORT_BRANCH}"
@@ -94,6 +101,18 @@ jobs:
           ARCHIVE_PATH="reports/archive/${TIMESTAMP}-${GITHUB_RUN_ID}.json"
           cp -f "$TMP_DIR/report.json" "${ARCHIVE_PATH}"
 
+          # Only commit if something changed (prevents noisy commits)
           git add -A reports/report.json "${ARCHIVE_PATH}"
-          git commit -m "Archive test report: ${ARCHIVE_PATH} (${GITHUB_SHA})" || echo "No changes to commit"
+          if git diff --cached --quiet; then
+            echo "No changes to commit (report identical to last commit). Skipping push."
+            exit 0
+          fi
+
+          git commit -m "Archive test report: ${ARCHIVE_PATH} (${GITHUB_SHA})"
+
+          # Use PAT to push (set GH_PUSH_TOKEN as repo secret)
+          echo "Setting remote URL to use PAT for authenticated push"
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PUSH_TOKEN }}@github.com/${{ github.repository }}.git
+
+          echo "Pushing reports branch..."
           git push origin HEAD:${REPORT_BRANCH} --force
