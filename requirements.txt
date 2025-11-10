@@ -1,3 +1,5 @@
+greenlet==2.0.2
+
 # Core Testing Framework
 pytest==8.0.0
 pytest-json-report
