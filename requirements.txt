@@ -21,3 +21,4 @@ allure-pytest==2.13.2
 streamlit==1.31.0
 pandas
 matplotlib
+requests
