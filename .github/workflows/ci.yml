@@ -4,25 +4,28 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-22.04  # Changed from ubuntu-latest to avoid Ubuntu 24.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       - name: Install Playwright browsers
         run: |
           playwright install --with-deps chromium
-      
+
       - name: Run tests
         run: |
           pytest --reruns 2 --reruns-delay 1 --alluredir=./reports/allure-results --json-report --json-report-file=./reports/report.json
@@ -44,3 +47,46 @@ jobs:
         with:
           name: test-artifacts
           path: reports/artifacts/**
+
+      - name: Publish report to reports branch (archive)
+        if: ${{ always() }}
+        env:
+          REPORT_BRANCH: reports
+          ARTIFACT_PATH: reports/report.json
+          GIT_AUTHOR_NAME: "github-actions[bot]"
+          GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
+        run: |
+          set -euo pipefail
+
+          echo "Preparing to publish report to branch: $REPORT_BRANCH"
+          git config user.name "$GIT_AUTHOR_NAME"
+          git config user.email "$GIT_AUTHOR_EMAIL"
+
+          # Fetch all branches (requires fetch-depth: 0 at checkout)
+          git fetch origin
+
+          if git show-ref --verify --quiet "refs/remotes/origin/${REPORT_BRANCH}"; then
+            echo "Reports branch exists — checking it out"
+            git checkout --progress --track -B ${REPORT_BRANCH} origin/${REPORT_BRANCH}
+            git rm -rf . >/dev/null 2>&1 || true
+          else
+            echo "Reports branch does not exist — creating orphan branch ${REPORT_BRANCH}"
+            git checkout --orphan ${REPORT_BRANCH}
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p reports/archive
+
+          if [ -f "${GITHUB_WORKSPACE}/${ARTIFACT_PATH}" ]; then
+            cp -f "${GITHUB_WORKSPACE}/${ARTIFACT_PATH}" reports/report.json
+            TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+            ARCHIVE_PATH="reports/archive/${TIMESTAMP}-${GITHUB_RUN_ID}.json"
+            cp -f "${GITHUB_WORKSPACE}/${ARTIFACT_PATH}" "${ARCHIVE_PATH}"
+          else
+            echo "No artifact found at ${GITHUB_WORKSPACE}/${ARTIFACT_PATH}. Nothing to publish."
+            exit 0
+          fi
+
+          git add -A reports/report.json "${ARCHIVE_PATH}"
+          git commit -m "Archive test report: ${ARCHIVE_PATH} (${GITHUB_SHA})" || echo "No changes to commit"
+          git push origin HEAD:${REPORT_BRANCH} --force

@@ -1,0 +1,48 @@
+name: Publish Test Report
+
+on:
+  workflow_run:
+    workflows: ["CI"]      # name of the workflow that runs tests (adjust if different)
+    types:
+      - completed
+
+jobs:
+  publish-report:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: reports  # checkout reports branch (if it exists)
+          persist-credentials: true
+
+      - name: Ensure branch exists (create if missing)
+        run: |
+          git fetch origin reports || true
+          if git rev-parse --verify origin/reports >/dev/null 2>&1; then
+            git checkout reports
+          else
+            git checkout --orphan reports
+            git rm -rf .
+            git commit --allow-empty -m "init reports branch"
+            git push origin reports
+            git checkout reports
+          fi
+
+      - name: Copy latest report from workflow run artifact (assumes tests job put it in repo)
+        # Option A: if your CI produced reports/report.json in the same repo workspace already, just copy
+        run: |
+          # The top-level working directory should contain reports/report.json
+          mkdir -p reports
+          cp -f reports/report.json ./reports/report.json || true
+
+      - name: Commit and push report.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Overwrite the file in branch and push
+          git add reports/report.json
+          git commit -m "Update test report: $GITHUB_RUN_ID - $GITHUB_SHA" || echo "No changes to commit"
+          git push origin reports
