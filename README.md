@@ -110,7 +110,7 @@ marky_2025_qa_framework/
 
 3. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
 4. **Install Playwright browsers**
