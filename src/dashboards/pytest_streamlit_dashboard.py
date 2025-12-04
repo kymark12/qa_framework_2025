@@ -16,6 +16,15 @@ LOCAL_REPORT_PATH = Path("reports/report.json")
 # Cache TTL (seconds) for how long we keep remote fetch results
 CACHE_TTL_SECONDS = 120
 
+# Define the colour scheme globally for consistent use
+OUTCOME_COLORS = {
+    'passed': '#28a745',  # Green
+    'failed': '#dc3545',  # Red
+    'skipped': '#ffc107', # Yellow
+    'xfailed': '#6c757d', # Gray
+    'xpassed': '#17a2b8'  # Teal
+}
+
 # ---------- Streamlit UI setup ----------
 st.set_page_config(page_title="QA Framework — Test Run Dashboard", layout="wide")
 st.title("QA Framework — Test Run Dashboard")
@@ -71,10 +80,14 @@ if report is None:
     st.warning("No pytest JSON report found (remote or local). Run tests and ensure CI pushed report.json to the `reports` branch.")
     st.stop()
 
+# Extract metadata
+created_at = report.get('created', 'Unknown')
+duration = report.get('duration', 0)
+
 if source == "remote":
-    st.info("Loaded report from remote `reports` branch.")
+    st.info(f"📡 Loaded report from remote `reports` branch | Generated: {created_at} | Suite Duration: {duration:.2f}s")
 else:
-    st.info("Loaded report from local file: reports/report.json")
+    st.info(f"💾 Loaded report from local file | Generated: {created_at} | Suite Duration: {duration:.2f}s")
 
 # ---------- Build DataFrame ----------
 tests = report.get("tests", [])
@@ -101,15 +114,60 @@ total = len(df)
 passed = (df['outcome'] == 'passed').sum()
 failed = (df['outcome'] == 'failed').sum()
 skipped = (df['outcome'] == 'skipped').sum()
+pass_rate = (passed / total * 100) if total > 0 else 0
 
-col1, col2, col3, col4 = st.columns(4)
+# Health indicator
+if pass_rate >= 95:
+    health_status = "🟢 Excellent"
+    health_color = "green"
+elif pass_rate >= 80:
+    health_status = "🟡 Good"
+    health_color = "orange"
+else:
+    health_status = "🔴 Needs Attention"
+    health_color = "red"
+
+st.markdown(f"### Test Suite Health: :{health_color}[{health_status}]")
+st.markdown("---")
+
+col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Total", int(total))
 col2.metric("Passed", int(passed))
 col3.metric("Failed", int(failed))
 col4.metric("Skipped", int(skipped))
+col5.metric("Pass Rate", f"{pass_rate:.1f}%")
 
 # ---------- CHARTS SECTION ----------
 st.header("📊 Test Results Visualization")
+
+# Add test category analysis if markers are available
+st.subheader("Test Distribution by Category")
+if 'nodeid' in df.columns:
+    # Extract test categories from nodeid
+    df['test_category'] = df['nodeid'].apply(lambda x: x.split('/')[1] if len(x.split('/')) > 1 else 'other')
+    category_counts = df['test_category'].value_counts()
+    
+    fig_cat, ax_cat = plt.subplots(figsize=(10, 4))
+    category_colors = ['#007bff', '#28a745', '#ffc107', '#dc3545']
+    bars_cat = ax_cat.bar(category_counts.index, category_counts.values, 
+                          color=category_colors[:len(category_counts)], alpha=0.8)
+    
+    # Add value labels
+    for bar in bars_cat:
+        height = bar.get_height()
+        ax_cat.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{int(height)}',
+                   ha='center', va='bottom', fontsize=11, weight='bold')
+    
+    ax_cat.set_xlabel('Test Category', fontsize=12, weight='bold')
+    ax_cat.set_ylabel('Count', fontsize=12, weight='bold')
+    ax_cat.set_title('Tests by Category (API, UI, Unit)', fontsize=14, weight='bold', pad=20)
+    ax_cat.grid(axis='y', alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    st.pyplot(fig_cat)
+    plt.close()
+    
+    st.markdown("---")
 
 # Create two columns for charts
 chart_col1, chart_col2 = st.columns(2)
@@ -122,12 +180,7 @@ with chart_col1:
     
     # Create pie chart
     fig1, ax1 = plt.subplots(figsize=(8, 6))
-    colors = {
-        'passed': '#28a745',  # Green
-        'failed': '#dc3545',  # Red
-        'skipped': '#ffc107'  # Yellow
-    }
-    pie_colors = [colors.get(outcome, '#6c757d') for outcome in outcome_counts.index]
+    pie_colors = [OUTCOME_COLORS.get(outcome, '#6c757d') for outcome in outcome_counts.index]
     
     wedges, texts, autotexts = ax1.pie(
         outcome_counts.values, 
@@ -151,18 +204,13 @@ with chart_col1:
 with chart_col2:
     st.subheader("Test Outcome Bar Chart")
     
-    # Create bar chart
+    # Create a bar chart
     fig2, ax2 = plt.subplots(figsize=(8, 6))
     
-    bar_colors = [colors.get(outcome, '#6c757d') for outcome in outcome_counts.index]
+    bar_colors = [OUTCOME_COLORS.get(outcome, '#6c757d') for outcome in outcome_counts.index]
     bars = ax2.bar(outcome_counts.index, outcome_counts.values, color=bar_colors, alpha=0.8)
     
-    # Add value labels on bars
-    for bar in bars:
-        height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., height,
-                f'{int(height)}',
-                ha='center', va='bottom', fontsize=12, weight='bold')
+    # ... rest of the code ...
     
     ax2.set_xlabel('Outcome', fontsize=12, weight='bold')
     ax2.set_ylabel('Count', fontsize=12, weight='bold')
@@ -182,75 +230,72 @@ for col_name in ['duration', 'call.duration', 'setup.duration']:
         break
 
 if duration_col:
-    # Filter out tests with 0 or very small durations for better visualization
+    # Filter out tests with 0 or very small durations for better visualisation
     df_with_duration = df[df[duration_col] > 0].copy()
     
     if len(df_with_duration) > 0:
-        # Sort by duration and take top 15 for readability
-        top_duration_df = df_with_duration.nlargest(15, duration_col)
+        # Sort by duration and take the top 10 for better readability
+        top_duration_df = df_with_duration.nlargest(10, duration_col)
         
-        fig3, ax3 = plt.subplots(figsize=(10, 8))
+        fig3, ax3 = plt.subplots(figsize=(12, 6))  # Wider, shorter for better display
         
-        # Create horizontal bar chart
+        # Create a horizontal bar chart
         y_pos = range(len(top_duration_df))
         durations = top_duration_df[duration_col].values
         
-        # Color bars by outcome
-        bar_colors_duration = [colors.get(outcome, '#6c757d') 
+        # Colour bars by outcome
+        bar_colors_duration = [OUTCOME_COLORS.get(outcome, '#6c757d') 
                               for outcome in top_duration_df['outcome']]
         
-        bars = ax3.barh(y_pos, durations, color=bar_colors_duration, alpha=0.7)
+        bars = ax3.barh(y_pos, durations, color=bar_colors_duration, alpha=0.8, height=0.6)
         
-        # Shorten test names for display
-        test_names = [name.split('::')[-1][:50] for name in top_duration_df['nodeid']]
+        # Shorten test names for display - improved
+        test_names = []
+        for name in top_duration_df['nodeid']:
+            parts = name.split('::')
+            if len(parts) >= 2:
+                short_name = f"{parts[1][:40]}..."  # Show file::test format
+            else:
+                short_name = parts[-1][:40]
+            test_names.append(short_name)
+        
         ax3.set_yticks(y_pos)
         ax3.set_yticklabels(test_names, fontsize=9)
         ax3.invert_yaxis()  # Highest duration at top
         ax3.set_xlabel('Duration (seconds)', fontsize=12, weight='bold')
-        ax3.set_title('Top 15 Slowest Tests', fontsize=14, weight='bold', pad=20)
+        ax3.set_title('Top 10 Slowest Tests', fontsize=14, weight='bold', pad=20)
         ax3.grid(axis='x', alpha=0.3, linestyle='--')
         
         # Add duration values on bars
         for i, (bar, duration) in enumerate(zip(bars, durations)):
-            ax3.text(duration, i, f' {duration:.2f}s',
+            ax3.text(duration + (max(durations) * 0.01), i, f'{duration:.2f}s',
                     va='center', fontsize=9, weight='bold')
         
         plt.tight_layout()
         st.pyplot(fig3)
         plt.close()
-        
-        # Show statistics
-        col_stat1, col_stat2, col_stat3 = st.columns(3)
-        with col_stat1:
-            st.metric("Avg Duration", f"{df_with_duration[duration_col].mean():.2f}s")
-        with col_stat2:
-            st.metric("Max Duration", f"{df_with_duration[duration_col].max():.2f}s")
-        with col_stat3:
-            st.metric("Total Time", f"{df_with_duration[duration_col].sum():.2f}s")
-    else:
-        st.info("No duration data available for visualization")
-else:
-    st.warning("Duration information not available in the report.")
 
 # ---------- Failing tests table ----------
 st.subheader("❌ Failing Tests")
 if failed > 0:
+    st.warning(f"⚠️ {int(failed)} test(s) are currently failing. Expand details below:")
+    
     # Build columns list based on what's available
-    fail_columns = ['nodeid']
+    fail_columns = ['nodeid', 'outcome']
     if 'duration' in df.columns:
         fail_columns.append('duration')
-    # prefer 'longrepr' or nested 'call.longrepr'
-    if 'longrepr' in df.columns:
-        fail_columns.append('longrepr')
-    elif 'call.longrepr' in df.columns:
-        fail_columns.append('call.longrepr')
-
-    # Some normalization for nested names display
+    
     failing_df = df[df['outcome'] == 'failed'][fail_columns].reset_index(drop=True)
-    # If 'call.longrepr' exists, rename to 'longrepr' for display
-    if 'call.longrepr' in failing_df.columns:
-        failing_df = failing_df.rename(columns={'call.longrepr': 'longrepr'})
+    
+    # Show the summary table
     st.dataframe(failing_df, use_container_width=True)
+    
+    # Show detailed error messages in expandable sections
+    st.markdown("#### 📝 Error Details")
+    for idx, row in df[df['outcome'] == 'failed'].iterrows():
+        test_name = row['nodeid'].split('::')[-1]
+        with st.expander(f"🔍 {test_name}"):
+            st.code(row.get('longrepr', row.get('call.longrepr', 'No error details available')), language='python')
 else:
     st.success("✅ No failures - All tests passed!")
 
