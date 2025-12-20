@@ -1,0 +1,179 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qa-automation-framework"
+version = "2025.1.0"
+description = "Professional QA Automation Framework - API & UI Testing with Playwright/Pytest"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+authors = [
+    {name = "Mark Ivan Berbenzana", email = "marky.berbenzana@gmail.com"},
+]
+keywords = ["qa", "automation", "testing", "playwright", "pytest", "api-testing", "ui-testing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+]
+
+dependencies = [
+    "pytest>=8.0.0",
+    "playwright>=1.41.0",
+    "requests>=2.31.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+    "jsonschema>=4.21.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-rerunfailures>=12.0",
+    "allure-pytest>=2.13.2",
+    "pytest-json-report>=1.5.0",
+    "ruff>=0.3.0",
+    "black>=24.1.1",
+    "mypy>=1.8.0",
+    "types-requests>=2.31.0",
+    "pre-commit>=3.6.0",
+]
+
+reporting = [
+    "streamlit>=1.31.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/kymark12/qa_framework_2025"
+Documentation = "https://github.com/kymark12/qa_framework_2025#readme"
+Repository = "https://github.com/kymark12/qa_framework_2025.git"
+Issues = "https://github.com/kymark12/qa_framework_2025/issues"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | reports
+  | allure-results
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+exclude = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+    ".pytest_cache",
+    ".mypy_cache",
+    "reports",
+    "allure-results",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "RUF",    # Ruff specific rules
+]
+ignore = [
+    "E501",   # Line too long (handled by black)
+    "W505",   # Doc line too long
+    "N802",   # Function names should be lowercase (test functions can violate this)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+known-third-party = ["pytest", "playwright", "requests", "pydantic"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]  # Tests can have longer lines for readability
+"conftest.py" = ["F401"]  # Fixtures don't need to be "used" in conftest
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = """
+    -v
+    --strict-markers
+    --tb=short
+    --disable-warnings
+"""
+markers = [
+    "smoke: Quick sanity tests (subset for CI gates)",
+    "regression: Full regression suite",
+    "e2e: End-to-end user journey tests",
+    "api: API endpoint tests",
+    "ui: UI/browser-based tests",
+    "unit: Unit tests",
+    "slow: Tests that take >5s (deselect with -m 'not slow')",
+    "flaky: Known flaky tests (run with reruns)",
+    "skip_ci: Tests that should not run in CI",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

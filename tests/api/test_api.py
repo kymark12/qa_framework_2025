@@ -3,10 +3,9 @@ import requests
 
 
 @pytest.mark.api
-def test_get_user():
+def test_get_user(settings):
     """Test GET request to retrieve user data"""
-    response = requests.get("https://jsonplaceholder.typicode.com/users/1")
-
+    response = requests.get(f"{settings.api.base_url}/users/1")
     assert response.status_code == 200
 
     data = response.json()
@@ -32,16 +31,9 @@ def test_get_all_users():
 @pytest.mark.api
 def test_create_user():
     """Test POST request to create a new user"""
-    new_user = {
-        "name": "QA Test User",
-        "username": "qa_test",
-        "email": "qa@example.com"
-    }
+    new_user = {"name": "QA Test User", "username": "qa_test", "email": "qa@example.com"}
 
-    response = requests.post(
-        "https://jsonplaceholder.typicode.com/users",
-        json=new_user
-    )
+    response = requests.post("https://jsonplaceholder.typicode.com/users", json=new_user)
 
     assert response.status_code == 201
 
@@ -54,16 +46,9 @@ def test_create_user():
 @pytest.mark.api
 def test_update_user():
     """Test PUT request to update user data"""
-    updated_data = {
-        "id": 1,
-        "name": "Updated Name",
-        "email": "updated@example.com"
-    }
+    updated_data = {"id": 1, "name": "Updated Name", "email": "updated@example.com"}
 
-    response = requests.put(
-        "https://jsonplaceholder.typicode.com/users/1",
-        json=updated_data
-    )
+    response = requests.put("https://jsonplaceholder.typicode.com/users/1", json=updated_data)
 
     assert response.status_code == 200
 
@@ -95,7 +80,7 @@ def test_get_user_posts(api_client):
 def test_invalid_user_id_returns_404():
     """Test that invalid user ID returns 404 - intentional failure demo"""
     response = requests.get("https://jsonplaceholder.typicode.com/users/999999")
-    
+
     # This will fail - API returns 404 but we expect 200
     assert response.status_code == 200, f"Expected 200 but got {response.status_code}"
 
@@ -107,12 +92,9 @@ def test_create_user_with_missing_fields():
         "username": "test_only"
         # Missing name and email
     }
-    
-    response = requests.post(
-        "https://jsonplaceholder.typicode.com/users",
-        json=incomplete_user
-    )
-    
+
+    response = requests.post("https://jsonplaceholder.typicode.com/users", json=incomplete_user)
+
     # This assertion will fail - API doesn't validate, but we expect it to
     assert response.status_code == 400, "Should return 400 for missing fields"
 
@@ -122,28 +104,28 @@ def test_create_user_with_missing_fields():
 def test_api_rate_limiting():
     """Test API rate limiting - slow test with multiple requests"""
     import time
-    
+
     results = []
     for i in range(10):
         response = requests.get(f"https://jsonplaceholder.typicode.com/posts/{i+1}")
         results.append(response.status_code)
         time.sleep(0.2)  # Simulate rate limiting
-    
+
     assert all(status == 200 for status in results)
     assert len(results) == 10
 
 
-@pytest.mark.api  
+@pytest.mark.api
 def test_user_data_schema_validation():
     """Test user data structure matches expected schema - partial failure demo"""
     response = requests.get("https://jsonplaceholder.typicode.com/users/1")
     data = response.json()
-    
+
     required_fields = ["id", "name", "username", "email", "phone", "website", "company", "address"]
-    
+
     for field in required_fields:
         assert field in data, f"Missing required field: {field}"
-    
+
     # This will fail - testing for field that doesn't exist
     assert "salary" in data, "User should have salary field"
 

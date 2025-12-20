@@ -1,0 +1,45 @@
+# This file is an alternative to the [tool.ruff] section in pyproject.toml
+# Currently using pyproject.toml for single source of truth, but keeping this as reference
+# Uncomment and use this if you prefer separate config files
+
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+exclude = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+    ".pytest_cache",
+    ".mypy_cache",
+    "reports",
+    "allure-results",
+]
+
+[lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "RUF",    # Ruff specific rules
+]
+ignore = [
+    "E501",   # Line too long (handled by black)
+    "W505",   # Doc line too long
+    "N802",   # Function names should be lowercase (test functions can violate this)
+]
+
+[lint.isort]
+known-first-party = ["src"]
+known-third-party = ["pytest", "playwright", "requests", "pydantic"]
+
+[lint.per-file-ignores]
+"tests/**" = ["E501"]
+"conftest.py" = ["F401"]
