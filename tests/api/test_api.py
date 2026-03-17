@@ -100,16 +100,12 @@ def test_create_user_with_missing_fields():
 
 
 @pytest.mark.api
-@pytest.mark.slow
 def test_api_rate_limiting():
-    """Test API rate limiting - slow test with multiple requests"""
-    import time
-
+    """Test API handles multiple sequential requests successfully"""
     results = []
     for i in range(10):
         response = requests.get(f"https://jsonplaceholder.typicode.com/posts/{i+1}")
         results.append(response.status_code)
-        time.sleep(0.2)  # Simulate rate limiting
 
     assert all(status == 200 for status in results)
     assert len(results) == 10

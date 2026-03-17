@@ -87,23 +87,18 @@ def test_checkout_with_single_item_fails(page: Page):
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 def test_complete_shopping_workflow(page: Page):
-    """Test complete e-commerce workflow - demonstrating slow test"""
-    import time
-
+    """Test complete e-commerce workflow"""
     # Login
     page.goto("https://www.saucedemo.com/")
     page.fill("#user-name", "standard_user")
     page.fill("#password", "secret_sauce")
     page.click("#login-button")
 
-    # Browse and add multiple items (slow operation)
-    time.sleep(1)  # Simulate user thinking
+    # Browse and add multiple items
+    expect(page.locator(".title")).to_have_text("Products")
     page.click("#add-to-cart-sauce-labs-backpack")
-    time.sleep(0.5)
     page.click("#add-to-cart-sauce-labs-bike-light")
-    time.sleep(0.5)
     page.click("#add-to-cart-sauce-labs-bolt-t-shirt")
 
     # Go to cart
@@ -114,14 +109,12 @@ def test_complete_shopping_workflow(page: Page):
     page.click("#checkout")
 
     # Fill checkout info
-    time.sleep(0.5)
     page.fill("#first-name", "John")
     page.fill("#last-name", "Doe")
     page.fill("#postal-code", "12345")
     page.click("#continue")
 
     # Complete order
-    time.sleep(0.5)
     page.click("#finish")
 
     # Verify success
@@ -141,4 +134,4 @@ def test_product_sorting_fails(page: Page):
 
     # This will fail - wrong expected text to demonstrate failure
     first_item_price = page.locator(".inventory_item_price").first
-    expect(first_item_price).to_have_text("$99.99")  # Wrong price - will fail!
+    expect(first_item_price).to_have_text("$99.99", timeout=1000)  # Wrong price - will fail!
